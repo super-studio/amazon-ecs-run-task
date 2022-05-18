@@ -168,7 +168,7 @@ async function run() {
         awsvpcConfiguration: {
           subnets: subnets.split(','),
           securityGroups: securityGroups.split(','),
-          assignPublicIp: assignPublicIp === 'true',
+          assignPublicIp,
         },
       };
     }
