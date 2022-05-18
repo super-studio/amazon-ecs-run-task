@@ -26,10 +26,10 @@ inputs:
     description: The launch type of the task, either FARGATE or EC2
     required: false
   subnets:
-    description: The subnets to launch a FARGATE tasks in, required if launch type is FARGATE
+    description: The subnets to launch a FARGATE tasks in, required if launch type is FARGATE and is expected in CSV format
     required: false
   security-groups:
-    description: The security groups to associate a FARGATE task with, required if launch type is FARGATE
+    description: The security groups to associate a FARGATE task with, required if launch type is FARGATE and is expected in CSV format
     required: false
   assign-public-ip:
     description: Whether to assign a public IP to the FARGATE task or not, required if launch type is FARGATE

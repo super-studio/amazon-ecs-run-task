@@ -166,9 +166,9 @@ async function run() {
       runTaskRequest.launchType = launchType;
       runTaskRequest.networkConfiguration = {
         awsvpcConfiguration: {
-          subnets,
-          securityGroups,
-          assignPublicIp,
+          subnets: subnets.split(','),
+          securityGroups: securityGroups.split(','),
+          assignPublicIp: assignPublicIp === 'true',
         },
       };
     }
