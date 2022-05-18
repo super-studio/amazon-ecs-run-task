@@ -1,5 +1,5 @@
-name: 'Amazon ECS "Run Task" Action for GitHub Actions'
-description: 'Runs an Amazon ECS task'
+name: 'Amazon ECS Run Task Action with Fargate support for GitHub Actions'
+description: 'Runs an Amazon ECS task, launched on either Fargate or EC2'
 branding:
   icon: 'cloud'
   color: 'orange'
