@@ -108,6 +108,12 @@ async function run() {
     const assignPublicIp = core.getInput('assign-public-ip', {
       required: false,
     });
+    const taskRoleArn = core.getInput('task-role-override', {
+      required: false,
+    });
+    const taskExecutionRoleArn = core.getInput('task-execution-role-override', {
+      required: false,
+    });
 
     // Register the task definition
     core.debug('Registering the task definition');
@@ -165,6 +171,16 @@ async function run() {
           assignPublicIp,
         },
       };
+    }
+
+    if (taskRoleArn) {
+      runTaskRequest.overrides = runTaskRequest.overrides || {};
+      runTaskRequest.overrides.taskRoleArn = taskRoleArn;
+    }
+
+    if (taskExecutionRoleArn) {
+      runTaskRequest.overrides = runTaskRequest.overrides || {};
+      runTaskRequest.overrides.executionRoleArn = taskExecutionRoleArn;
     }
 
     const runTaskResponse = await ecs.runTask(runTaskRequest).promise();

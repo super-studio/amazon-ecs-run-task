@@ -34,6 +34,12 @@ inputs:
   assign-public-ip:
     description: Whether to assign a public IP to the FARGATE task or not, required if launch type is FARGATE
     required: false
+  task-role-override:
+    description: A role ARN for task permissions so that a role ARN is not hardcoded within the task definition
+    required: false
+  task-exection-role-override:
+    description: A role ARN for task execution permissions so that it also is not hardcoded within the task definition
+    required: false
 outputs:
   task-definition-arn:
     description: 'The ARN of the registered ECS task definition'
