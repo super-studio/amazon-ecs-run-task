@@ -10,7 +10,7 @@ const IGNORED_TASK_DEFINITION_ATTRIBUTES = [
   'taskDefinitionArn',
   'requiresAttributes',
   'revision',
-  'status'
+  'status',
 ];
 
 const WAIT_DEFAULT_DELAY_SEC = 5;
@@ -52,7 +52,7 @@ function emptyValueReplacer(_, value) {
   }
 
   if (Array.isArray(value)) {
-    return value.filter(e => !isEmptyValue(e));
+    return value.filter((e) => !isEmptyValue(e));
   }
 
   return value;
@@ -65,10 +65,12 @@ function cleanNullKeys(obj) {
 function removeIgnoredAttributes(taskDef) {
   for (var attribute of IGNORED_TASK_DEFINITION_ATTRIBUTES) {
     if (taskDef[attribute]) {
-      core.warning(`Ignoring property '${attribute}' in the task definition file. ` +
-        'This property is returned by the Amazon ECS DescribeTaskDefinition API and may be shown in the ECS console, ' +
-        'but it is not a valid field when registering a new task definition. ' +
-        'This field can be safely removed from your task definition file.');
+      core.warning(
+        `Ignoring property '${attribute}' in the task definition file. ` +
+          'This property is returned by the Amazon ECS DescribeTaskDefinition API and may be shown in the ECS console, ' +
+          'but it is not a valid field when registering a new task definition. ' +
+          'This field can be safely removed from your task definition file.'
+      );
       delete taskDef[attribute];
     }
   }
@@ -78,67 +80,103 @@ function removeIgnoredAttributes(taskDef) {
 
 async function run() {
   try {
-    const agent = 'amazon-ecs-run-task-for-github-actions'
+    const agent = 'amazon-ecs-run-task-for-github-actions';
 
     const ecs = new aws.ECS({
-      customUserAgent: agent
+      customUserAgent: agent,
     });
 
     // Get inputs
-    const taskDefinitionFile = core.getInput('task-definition', { required: true });
+    const taskDefinitionFile = core.getInput('task-definition', {
+      required: true,
+    });
     const cluster = core.getInput('cluster', { required: false });
     const count = core.getInput('count', { required: true });
     const startedBy = core.getInput('started-by', { required: false }) || agent;
-    const waitForFinish = core.getInput('wait-for-finish', { required: false }) || false;
-    let waitForMinutes = parseInt(core.getInput('wait-for-minutes', { required: false })) || 30;
+    const waitForFinish =
+      core.getInput('wait-for-finish', { required: false }) || false;
+    let waitForMinutes =
+      parseInt(core.getInput('wait-for-minutes', { required: false })) || 30;
     if (waitForMinutes > MAX_WAIT_MINUTES) {
       waitForMinutes = MAX_WAIT_MINUTES;
     }
+    const subnets = core.getInput('subnets', { required: false });
+    const securityGroups = core.getInput('security-groups', {
+      required: false,
+    });
+    const launchType = core.getInput('launch-type', { required: false });
+    const assignPublicIp = core.getInput('assign-public-ip', {
+      required: false,
+    });
 
     // Register the task definition
     core.debug('Registering the task definition');
-    const taskDefPath = path.isAbsolute(taskDefinitionFile) ?
-      taskDefinitionFile :
-      path.join(process.env.GITHUB_WORKSPACE, taskDefinitionFile);
+    const taskDefPath = path.isAbsolute(taskDefinitionFile)
+      ? taskDefinitionFile
+      : path.join(process.env.GITHUB_WORKSPACE, taskDefinitionFile);
     const fileContents = fs.readFileSync(taskDefPath, 'utf8');
-    const taskDefContents = removeIgnoredAttributes(cleanNullKeys(yaml.parse(fileContents)));
+    const taskDefContents = removeIgnoredAttributes(
+      cleanNullKeys(yaml.parse(fileContents))
+    );
 
     let registerResponse;
     try {
-      registerResponse = await ecs.registerTaskDefinition(taskDefContents).promise();
+      registerResponse = await ecs
+        .registerTaskDefinition(taskDefContents)
+        .promise();
     } catch (error) {
-      core.setFailed("Failed to register task definition in ECS: " + error.message);
-      core.debug("Task definition contents:");
-      core.debug(JSON.stringify(taskDefContents, undefined, 4));
-      throw(error);
+      core.setFailed(
+        'Failed to register task definition in ECS: ' + error.message
+      );
+      core.debug('Task definition contents:');
+      core.debug(JSON.stringify(taskDefContents, undefined, 2));
+      throw error;
     }
     const taskDefArn = registerResponse.taskDefinition.taskDefinitionArn;
     core.setOutput('task-definition-arn', taskDefArn);
 
     const clusterName = cluster ? cluster : 'default';
 
-    core.debug(`Running task with ${JSON.stringify({
+    core.debug(
+      `Running task with ${JSON.stringify({
+        cluster: clusterName,
+        taskDefinition: taskDefArn,
+        count: count,
+        startedBy: startedBy,
+      })}`
+    );
+
+    /**
+     * @type aws.ECS.RunTaskRequest
+     */
+    const runTaskRequest = {
       cluster: clusterName,
       taskDefinition: taskDefArn,
       count: count,
-      startedBy: startedBy
-    })}`)
+      startedBy: startedBy,
+    };
 
-    const runTaskResponse = await ecs.runTask({
-      cluster: clusterName,
-      taskDefinition: taskDefArn,
-      count: count,
-      startedBy: startedBy
-    }).promise();
+    if (launchType === 'FARGATE') {
+      runTaskRequest.launchType = launchType;
+      runTaskRequest.networkConfiguration = {
+        awsvpcConfiguration: {
+          subnets,
+          securityGroups,
+          assignPublicIp,
+        },
+      };
+    }
 
-    core.debug(`Run task response ${JSON.stringify(runTaskResponse)}`)
+    const runTaskResponse = await ecs.runTask(runTaskRequest).promise();
+
+    core.debug(`Run task response ${JSON.stringify(runTaskResponse)}`);
 
     if (runTaskResponse.failures && runTaskResponse.failures.length > 0) {
       const failure = runTaskResponse.failures[0];
       throw new Error(`${failure.arn} is ${failure.reason}`);
     }
 
-    const taskArns = runTaskResponse.tasks.map(task => task.taskArn);
+    const taskArns = runTaskResponse.tasks.map((task) => task.taskArn);
 
     core.setOutput('task-arn', taskArns);
 
@@ -146,8 +184,7 @@ async function run() {
       await waitForTasksStopped(ecs, clusterName, taskArns, waitForMinutes);
       await tasksExitCode(ecs, clusterName, taskArns);
     }
-  }
-  catch (error) {
+  } catch (error) {
     core.setFailed(error.message);
     core.debug(error.stack);
   }
@@ -161,43 +198,53 @@ async function waitForTasksStopped(ecs, clusterName, taskArns, waitForMinutes) {
   const maxAttempts = (waitForMinutes * 60) / WAIT_DEFAULT_DELAY_SEC;
 
   core.debug('Waiting for tasks to stop');
-  
-  const waitTaskResponse = await ecs.waitFor('tasksStopped', {
-    cluster: clusterName,
-    tasks: taskArns,
-    $waiter: {
-      delay: WAIT_DEFAULT_DELAY_SEC,
-      maxAttempts: maxAttempts
-    }
-  }).promise();
 
-  core.debug(`Run task response ${JSON.stringify(waitTaskResponse)}`)
-  
-  core.info(`All tasks have stopped. Watch progress in the Amazon ECS console: https://console.aws.amazon.com/ecs/home?region=${aws.config.region}#/clusters/${clusterName}/tasks`);
+  const waitTaskResponse = await ecs
+    .waitFor('tasksStopped', {
+      cluster: clusterName,
+      tasks: taskArns,
+      $waiter: {
+        delay: WAIT_DEFAULT_DELAY_SEC,
+        maxAttempts: maxAttempts,
+      },
+    })
+    .promise();
+
+  core.debug(`Run task response ${JSON.stringify(waitTaskResponse)}`);
+
+  core.info(
+    `All tasks have stopped. Watch progress in the Amazon ECS console: https://console.aws.amazon.com/ecs/home?region=${aws.config.region}#/clusters/${clusterName}/tasks`
+  );
 }
 
 async function tasksExitCode(ecs, clusterName, taskArns) {
-  const describeResponse = await ecs.describeTasks({
-    cluster: clusterName,
-    tasks: taskArns
-  }).promise();
+  const describeResponse = await ecs
+    .describeTasks({
+      cluster: clusterName,
+      tasks: taskArns,
+    })
+    .promise();
 
-  const containers = [].concat(...describeResponse.tasks.map(task => task.containers))
-  const exitCodes = containers.map(container => container.exitCode)
-  const reasons = containers.map(container => container.reason)
+  const containers = [].concat(
+    ...describeResponse.tasks.map((task) => task.containers)
+  );
+  const exitCodes = containers.map((container) => container.exitCode);
+  const reasons = containers.map((container) => container.reason);
 
   const failuresIdx = [];
-  
+
   exitCodes.filter((exitCode, index) => {
     if (exitCode !== 0) {
-      failuresIdx.push(index)
+      failuresIdx.push(index);
     }
-  })
+  });
 
-  const failures = reasons.filter((_, index) => failuresIdx.indexOf(index) !== -1)
+  const failures = reasons.filter(
+    (_, index) => failuresIdx.indexOf(index) !== -1
+  );
 
   if (failures.length > 0) {
-    core.setFailed(failures.join("\n"));
+    core.setFailed(failures.join('\n'));
   } else {
     core.info(`All tasks have exited successfully.`);
   }
@@ -207,5 +254,5 @@ module.exports = run;
 
 /* istanbul ignore next */
 if (require.main === module) {
-    run();
+  run();
 }

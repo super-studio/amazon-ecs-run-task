@@ -11,16 +11,28 @@ inputs:
     description: "The name of the ECS cluster. Will default to the 'default' cluster"
     required: true
   count:
-    description: "The count of tasks to run. Will default to the 1"
+    description: 'The count of tasks to run. Will default to the 1'
     required: true
   started-by:
-    description: "The value of the task started-by"
+    description: 'The value of the task started-by'
     required: false
   wait-for-finish:
-    description: "Whether to wait for tasks to reach stopped state. Will default to not waiting"
+    description: 'Whether to wait for tasks to reach stopped state. Will default to not waiting'
     required: false
   wait-for-minutes:
     description: 'How long to wait for the task reach stopped state, in minutes (default: 30 minutes, max: 6 hours).'
+    required: false
+  launch-type:
+    description: The launch type of the task, either FARGATE or EC2
+    required: false
+  subnets:
+    description: The subnets to launch a FARGATE tasks in, required if launch type is FARGATE
+    required: false
+  security-groups:
+    description: The security groups to associate a FARGATE task with, required if launch type is FARGATE
+    required: false
+  assign-public-ip:
+    description: Whether to assign a public IP to the FARGATE task or not, required if launch type is FARGATE
     required: false
 outputs:
   task-definition-arn:
