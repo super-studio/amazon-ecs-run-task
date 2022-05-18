@@ -37,7 +37,7 @@ inputs:
   task-role-override:
     description: A role ARN for task permissions so that a role ARN is not hardcoded within the task definition
     required: false
-  task-exection-role-override:
+  task-execution-role-override:
     description: A role ARN for task execution permissions so that it also is not hardcoded within the task definition
     required: false
 outputs:
