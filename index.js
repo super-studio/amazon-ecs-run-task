@@ -11,6 +11,8 @@ const IGNORED_TASK_DEFINITION_ATTRIBUTES = [
   'requiresAttributes',
   'revision',
   'status',
+  'registeredBy',
+  'registeredAt',
 ];
 
 const WAIT_DEFAULT_DELAY_SEC = 5;
