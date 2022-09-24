@@ -1,6 +1,15 @@
 ## Amazon ECS "Run Task" Action for GitHub Actions
 
-Runs an Amazon ECS task on ECS cluster.
+Runs an Amazon ECS task on ECS cluster, with options for Launch Type, VPC Configuration & Capacity Provider Strategy.
+
+Combines improvements from the following repositories and PRs:
+
+- [Add support for capacity provider strategy attribute by @evgeniy-b](https://github.com/smitp/amazon-ecs-run-task/pull/76/files) - 
+  to add support for [capacity provider strategy](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cluster-capacity-providers.html?icmpid=docs_ecs_hp_deploy).
+- [YashdalfTheGray/amazon-ecs-run-task](https://github.com/YashdalfTheGray/amazon-ecs-run-task/) - to add support
+  for `launchType` and `networkConfiguration`
+- [smitp/amazon-ecs-run-task](https://github.com/smitp/amazon-ecs-run-task) - initial fork which enabled running of an
+  ECS task
 
 **Table of Contents**
 
@@ -21,7 +30,7 @@ Runs an Amazon ECS task on ECS cluster.
 
 ```yaml
     - name: Run Task on Amazon ECS
-      uses: muya/amazon-ecs-run-task
+      uses: muya/amazon-ecs-run-task@v1
       with:
         task-definition: task-definition.json
         cluster: my-cluster
@@ -95,7 +104,7 @@ The task definition file can be updated prior to deployment with the new contain
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Run Task on Amazon ECS
-      uses: muya/amazon-ecs-run-task
+      uses: muya/amazon-ecs-run-task@v1
       with:
         task-definition: task-definition.json
         cluster: my-cluster

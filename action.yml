@@ -23,19 +23,29 @@ inputs:
     description: 'How long to wait for the task reach stopped state, in minutes (default: 30 minutes, max: 6 hours).'
     required: false
   launch-type:
-    description: The launch type of the task, either FARGATE or EC2
+    description: The launch type of the task, either FARGATE or EC2. Can be overridden by the capacity-provider-strategy.
     required: false
   capacity-provider-strategy:
-    description: 'JSON representation of the capacity provider strategy to use for the task. Only set if provided. Example: [{"capacityProvider": "FARGATE_SPOT", "base": 0, "weight": 1}]. Provider options: [FARGATE, FARGATE_SPOT]'
+    description: |
+      JSON representation of the capacity provider strategy to use for the task. Only set if provided. 
+      Example: '[{"capacityProvider": "FARGATE_SPOT", "base": 0, "weight": 1}]'. 
+      Provider options: [FARGATE, FARGATE_SPOT].
+      Overrides value of launch-type if set.
     required: false
   subnets:
-    description: The subnets to launch a FARGATE tasks in, required if launch type is FARGATE and is expected in CSV format
+    description: |
+      The subnets to launch a FARGATE tasks in, required if launch type is FARGATE and is expected in CSV format. 
+      Only applies if either "launch-type" or "capacity-provider-strategy" is set.
     required: false
   security-groups:
-    description: The security groups to associate a FARGATE task with, required if launch type is FARGATE and is expected in CSV format
+    description: |
+      The security groups to associate a FARGATE task with, required if launch type is FARGATE and is expected in CSV format.
+      Only applies if either "launch-type" or "capacity-provider-strategy" is set.
     required: false
   assign-public-ip:
-    description: Whether to assign a public IP to the FARGATE task or not, required if launch type is FARGATE. Should be one of [DISABLED,ENABLED]
+    description: |
+      Whether to assign a public IP to the FARGATE task or not, required if launch type is FARGATE. 
+      Should be one of [DISABLED,ENABLED]. Defaults to DISABLED
     required: false
   task-role-override:
     description: A role ARN for task permissions so that a role ARN is not hardcoded within the task definition
