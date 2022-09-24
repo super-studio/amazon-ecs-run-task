@@ -105,9 +105,10 @@ async function run() {
       required: false,
     });
     const launchType = core.getInput('launch-type', { required: false });
+    const capacityProviderStrategyString = core.getInput('capacity-provider-strategy', { required: false }) || '';
     const assignPublicIp = core.getInput('assign-public-ip', {
       required: false,
-    });
+    }) || 'DISABLED';
     const taskRoleArn = core.getInput('task-role-override', {
       required: false,
     });
@@ -143,15 +144,6 @@ async function run() {
 
     const clusterName = cluster ? cluster : 'default';
 
-    core.debug(
-      `Running task with ${JSON.stringify({
-        cluster: clusterName,
-        taskDefinition: taskDefArn,
-        count: count,
-        startedBy: startedBy,
-      })}`
-    );
-
     /**
      * @type aws.ECS.RunTaskRequest
      */
@@ -173,6 +165,20 @@ async function run() {
       };
     }
 
+    // Only parse capacity provider if value has been set.
+    let capacityProviderStrategy;
+    if (capacityProviderStrategyString !== "") {
+      try {
+        capacityProviderStrategy = JSON.parse(capacityProviderStrategyString);
+        runTaskRequest.capacityProviderStrategy = capacityProviderStrategy;
+      } catch (error) {
+        core.setFailed("Failed to parse capacity provider strategy definition: " + error.message);
+        core.debug("Parameter value:");
+        core.debug(capacityProviderStrategyString);
+        throw(error);
+      }
+    }
+
     if (taskRoleArn) {
       runTaskRequest.overrides = runTaskRequest.overrides || {};
       runTaskRequest.overrides.taskRoleArn = taskRoleArn;
@@ -182,6 +188,10 @@ async function run() {
       runTaskRequest.overrides = runTaskRequest.overrides || {};
       runTaskRequest.overrides.executionRoleArn = taskExecutionRoleArn;
     }
+
+    core.debug(
+      `Running task with ${JSON.stringify(runTaskRequest)}`
+    );
 
     const runTaskResponse = await ecs.runTask(runTaskRequest).promise();
 

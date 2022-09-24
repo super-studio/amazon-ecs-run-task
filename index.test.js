@@ -34,7 +34,14 @@ describe('Deploy to ECS', () => {
             .mockReturnValueOnce('task-definition.json')                      // task-definition
             .mockReturnValueOnce('cluster-789')                               // cluster
             .mockReturnValueOnce('1')                                         // count
-            .mockReturnValueOnce('amazon-ecs-run-task-for-github-actions');   // started-by
+            .mockReturnValueOnce('amazon-ecs-run-task-for-github-actions')    // started-by
+            .mockReturnValueOnce('false')                                     // wait-for-finish
+            .mockReturnValueOnce('30')                                        // wait-for-minutes
+            .mockReturnValueOnce('subnet-123,subnet-456')                     // subnets
+            .mockReturnValueOnce('sg-123,sg-456')                             // security-groups
+            .mockReturnValueOnce('FARGATE')                                   // launch-type
+            .mockReturnValueOnce('') // capacity-provider-strategy
+        ;
 
         process.env = Object.assign(process.env, { GITHUB_WORKSPACE: __dirname });
 
@@ -130,7 +137,15 @@ describe('Deploy to ECS', () => {
             cluster: 'cluster-789',
             taskDefinition: 'task:def:arn',
             count: '1',
-            startedBy: 'amazon-ecs-run-task-for-github-actions'
+            startedBy: 'amazon-ecs-run-task-for-github-actions',
+            networkConfiguration: {
+                awsvpcConfiguration: {
+                    subnets: ['subnet-123', 'subnet-456'],
+                    securityGroups: ['sg-123', 'sg-456'],
+                    assignPublicIp: 'DISABLED'
+                }
+            },
+            launchType: 'FARGATE'
         });
         expect(mockEcsWaiter).toHaveBeenCalledTimes(0);
         expect(core.setOutput).toBeCalledWith('task-arn', ['arn:aws:ecs:fake-region:account_id:task/arn']);
@@ -143,7 +158,9 @@ describe('Deploy to ECS', () => {
             .mockReturnValueOnce('cluster-789')                               // cluster
             .mockReturnValueOnce('1')                                         // count
             .mockReturnValueOnce('amazon-ecs-run-task-for-github-actions')    // started-by
-            .mockReturnValueOnce('true');                                     // wait-for-finish
+            .mockReturnValueOnce('true')                                      // wait-for-finish
+            .mockReturnValueOnce('')                                          // capacity-provider-strategy
+        ;
 
         await run();
         expect(core.setFailed).toHaveBeenCalledTimes(0);
@@ -270,5 +287,25 @@ describe('Deploy to ECS', () => {
         expect(core.setFailed).toHaveBeenCalledTimes(2);
         expect(core.setFailed).toHaveBeenNthCalledWith(1, 'Failed to register task definition in ECS: Could not parse');
         expect(core.setFailed).toHaveBeenNthCalledWith(2, 'Could not parse');
+    });
+    test('error is caught if capacity provider strategy param parsing fails', async () => {
+        core.getInput = jest
+            .fn()
+            .mockReturnValueOnce('task-definition.json')                      // task-definition
+            .mockReturnValueOnce('cluster-789')                               // cluster
+            .mockReturnValueOnce('1')                                         // count
+            .mockReturnValueOnce('amazon-ecs-run-task-for-github-actions')    // started-by
+            .mockReturnValueOnce('false')                                     // wait-for-finish
+            .mockReturnValueOnce('30')                                        // wait-for-minutes
+            .mockReturnValueOnce('subnet-123,subnet-456')                     // subnets
+            .mockReturnValueOnce('sg-123,sg-456')                             // security-groups
+            .mockReturnValueOnce('FARGATE')                                   // launch-type
+            .mockReturnValueOnce('not-a-json');                               // capacity-provider-strategy
+
+        await run();
+
+        expect(core.setFailed).toHaveBeenCalledTimes(2);
+        expect(core.setFailed).toHaveBeenNthCalledWith(1, 'Failed to parse capacity provider strategy definition: Unexpected token o in JSON at position 1');
+        expect(core.setFailed).toHaveBeenNthCalledWith(2, 'Unexpected token o in JSON at position 1');
     });
 });
