@@ -102,10 +102,10 @@ async function run() {
     if (waitForMinutes > MAX_WAIT_MINUTES) {
       waitForMinutes = MAX_WAIT_MINUTES;
     }
-    const subnets = core.getInput('subnets', { required: false });
-    const securityGroups = core.getInput('security-groups', {
+    const subnetsString = core.getInput('subnets', { required: false }) || '';
+    const securityGroupsString = core.getInput('security-groups', {
       required: false,
-    });
+    }) || '';
     const launchType = core.getInput('launch-type', { required: false });
     const capacityProviderStrategyString = core.getInput('capacity-provider-strategy', { required: false }) || '';
     const assignPublicIp = core.getInput('assign-public-ip', {
@@ -156,23 +156,43 @@ async function run() {
       startedBy: startedBy,
     };
 
-    if (launchType === 'FARGATE') {
-      runTaskRequest.launchType = launchType;
-      runTaskRequest.networkConfiguration = {
-        awsvpcConfiguration: {
-          subnets: subnets.split(','),
-          securityGroups: securityGroups.split(','),
-          assignPublicIp,
-        },
-      };
+    // Configure Networking Options.
+    let subnets = undefined;
+    if (subnetsString !== '') {
+      subnets = subnetsString.split(',');
     }
 
-    // Only parse capacity provider if value has been set.
-    let capacityProviderStrategy;
+    let securityGroups = undefined;
+    if (securityGroupsString !== '') {
+      securityGroups = securityGroupsString.split(',');
+    }
+
+    // Will only be assigned to FARGATE launch type, or when a capacity provider is set.
+    const vpcConfiguration = {
+      subnets: subnets,
+      securityGroups: securityGroups,
+      assignPublicIp,
+    }
+
+    if (launchType === 'FARGATE') {
+      runTaskRequest.launchType = launchType;
+      // FARGATE launch type requires awsvpcConfiguration.
+      runTaskRequest.networkConfiguration = {
+        awsvpcConfiguration: vpcConfiguration,
+      }
+    }
+
+    // Only parse capacity provider if value has been set. Overrides launch type.
     if (capacityProviderStrategyString !== "") {
       try {
-        capacityProviderStrategy = JSON.parse(capacityProviderStrategyString);
-        runTaskRequest.capacityProviderStrategy = capacityProviderStrategy;
+        core.info(`Capacity provider strategy is set. Launch type will be ignored.`);
+        runTaskRequest.launchType = undefined;
+        runTaskRequest.capacityProviderStrategy = JSON.parse(capacityProviderStrategyString);
+
+        // If capacity provider is provided, then awsvpcConfiguration is required.
+        runTaskRequest.networkConfiguration = {
+          awsvpcConfiguration: vpcConfiguration,
+        }
       } catch (error) {
         core.setFailed("Failed to parse capacity provider strategy definition: " + error.message);
         core.debug("Parameter value:");
