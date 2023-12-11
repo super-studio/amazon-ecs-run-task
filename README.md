@@ -1,3 +1,5 @@
+**To prevent the code change from origin repo (https://github.com/muya/amazon-ecs-run-task) and manage it easier, we forked and created a new release tag for this Github Action.**
+
 ## Amazon ECS "Run Task" Action for GitHub Actions
 
 Runs an Amazon ECS task on ECS cluster, with options for Launch Type, VPC Configuration & Capacity Provider Strategy.
